@@ -1,0 +1,19 @@
+{
+  "name": "erf-apostrophe-themes",
+  "version": "1.0.0",
+  "description": "A Themes builder for Apostrophe CMS. Build light, dark, or even holiday themes that a user can easily activate and deactivate.",
+  "main": "index.js",
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "blank"
+  },
+  "author": "Elliot 'booellean' Forst",
+  "devDependencies": {
+    "apostrophe": "^3.1.1"
+  },
+  "dependencies": {
+    "color": "^4.2.3",
+    "mongo-sanitize": "^1.1.0"
+  }
+}

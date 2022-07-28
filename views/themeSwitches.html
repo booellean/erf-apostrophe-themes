@@ -1,0 +1,44 @@
+<!-- TODO: This will be the series of buttons to toggle the themes modes -->
+<!-- TODO: how to list multiple active themes for widgets... That will probably be in the layout.html file -->
+
+{% set themes = data.themes %}
+{% if (themes) and (themes.length > 0) %}
+    {% for theme in themes %}
+        {% set type = theme.themeType %}
+        {% if data.includeTitle %}
+        {{ theme.title }}
+        {% endif %}
+        <div class="tabs tabs__{{type}} theme__{{type}}" :class="wrapperClass" aria-hidden="true">
+        {% for category, values in theme.themeObject %}
+            {% if category !== "default" %}
+            <button class="tabs__item theme__{{category}}" onclick="changeTheme('{{category}}', '{{type}}')">
+            {{ category }}
+            </button>
+            {% endif %}
+        {% endfor %}
+        </div>
+    {% endfor %}
+{% endif %}
+<!-- <nav class="tabs" :class="wrapperClass">
+    <button
+      class="tabs__item"
+      type="button"
+      v-for="tab in tabs"
+      :ref="tab.value"
+      :key="tab.title"
+      :class="[
+        { 'tabs__item_active' : tab.value === currentTab },
+        tab.value === currentTab && tabActiveClass ? tabActiveClass: '',
+        tabClass,
+      ]"
+      :disabled="tab.disabled || false"
+      @click="handleClick(tab.value)"
+      v-html="tab.title"
+    />
+
+    <div
+      class="tabs__active-line"
+      :class="lineClass"
+      :style="{ width: `${activeLineWidth}px`, transform: `translateX(${activeLineOffset}px)` }"
+    />
+  </nav> -->

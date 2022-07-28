@@ -1,0 +1,47 @@
+{% if data.cssThemesDefaultsUrl %}
+<link href="{{data.cssThemesDefaultsUrl}}" rel="stylesheet">
+{% endif %}
+<link href="{{data.erfThemesCssUrl}}" id="erf-themes-css" rel="stylesheet">
+
+<style>
+    /* Style the tab */
+.tabs {
+  overflow: hidden;
+  display: inline-block;
+  /* To prevent stretching in flex items */
+  align-self: flex-start;
+  border: 1px solid #ccc;
+  border: 1px solid var(--a-base-8);
+  background-color: #f4f4f4;
+  background-color: var(--a-base-10);
+  color: var(--a-text-primary)
+}
+
+/* Style the buttons inside the tab */
+.tabs button {
+  background-color: inherit;
+  font-weight: 500;
+  font-weight: var(--a-weight-base);
+  float: left;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  padding: 10px 12px;
+  padding: var(--a-type-small) var(--a-type-base);
+  transition: 0.3s;
+  font-size: 12px;
+  font-size: var(--a-type-base);
+}
+
+/* Change background color of buttons on hover */
+.tabs button:hover {
+  background-color: #dbdbdb;
+  background-color: var(--a-base-8);
+}
+
+/* Create an active/current tablink class */
+.tabs button.selected {
+  background-color: #c9c9c9;
+  background-color: var(--a-base-7);
+}
+</style>
