@@ -1,8 +1,7 @@
-<script type="application/javascript">
+export default () => {
     // TODO: get last saved theme
     // Apply backup theme
     const body = document.querySelector('body')
-    const themes = {{ data.themes | dump | safe  }}
     
     function changeTheme(theme, type){
         // We are separting this logic so we can call this function in our Vue components without affecting the button/switch styles
@@ -33,11 +32,6 @@
         body.className = body.className.replace(className, `themes-${safeType}-${theme}`)
         body.dataset[`theme${(safeType[0].toUpperCase() + safeType.substring(1)).replace(/-([a-z])/g, s => s.slice(-1).toUpperCase())}`] = theme
     }
-    function themeExists(theme, type){
-        return themes.find( (obj) => {
-            obj.type === type && obj.categories.includes(theme)
-        })
-    }
     window.addEventListener('DOMContentLoaded', () => {
         console.log('content loaded')
         if(window.localStorage){
@@ -48,4 +42,4 @@
             }
         }
     }, { once: true })
-</script>
+}

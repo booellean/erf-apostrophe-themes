@@ -1,9 +1,8 @@
-{% if data.cssThemesDefaultsUrl %}
-<link href="{{data.cssThemesDefaultsUrl}}" rel="stylesheet">
-{% endif %}
-<link href="{{data.erfThemesCssUrl}}" id="erf-themes-css" rel="stylesheet">
+<style id="erf-themes-css" type="text/css">
+  {{ data.cssData | safe }}
+</style>
 
-<style>
+<style type="text/css">
     /* Style the tab */
 .tabs {
   overflow: hidden;

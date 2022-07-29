@@ -4,12 +4,14 @@
 {% set themes = data.themes %}
 {% if (themes) and (themes.length > 0) %}
     {% for theme in themes %}
-        {% set type = theme.themeType %}
+      {% set length = theme.categories | rejectattr('type', 'default') | length %}
+      {% if length > 1 %}
+        {% set type = theme.type %}
         {% if data.includeTitle %}
         {{ theme.title }}
         {% endif %}
-        <div class="tabs tabs__{{type}} theme__{{type}}" :class="wrapperClass" aria-hidden="true">
-        {% for category, values in theme.themeObject %}
+        <div class="tabs tabs__{{type}} theme__{{type}}" class="wrapperClass" aria-hidden="true">
+        {% for category in theme.categories %}
             {% if category !== "default" %}
             <button class="tabs__item theme__{{category}}" onclick="changeTheme('{{category}}', '{{type}}')">
             {{ category }}
@@ -17,28 +19,6 @@
             {% endif %}
         {% endfor %}
         </div>
+      {% endif %}
     {% endfor %}
 {% endif %}
-<!-- <nav class="tabs" :class="wrapperClass">
-    <button
-      class="tabs__item"
-      type="button"
-      v-for="tab in tabs"
-      :ref="tab.value"
-      :key="tab.title"
-      :class="[
-        { 'tabs__item_active' : tab.value === currentTab },
-        tab.value === currentTab && tabActiveClass ? tabActiveClass: '',
-        tabClass,
-      ]"
-      :disabled="tab.disabled || false"
-      @click="handleClick(tab.value)"
-      v-html="tab.title"
-    />
-
-    <div
-      class="tabs__active-line"
-      :class="lineClass"
-      :style="{ width: `${activeLineWidth}px`, transform: `translateX(${activeLineOffset}px)` }"
-    />
-  </nav> -->

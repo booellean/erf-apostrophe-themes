@@ -19,8 +19,7 @@ module.exports = {
       quickCreate: false,
       perPage: 15,
       publicApiProjection: {},
-      setDefaults: true,
-      cssDefaultsName: 'erf-themes-defaults',
+      writeCssFile: false,
       cssFileName: 'erf-themes',
       cssDirectory: 'css'
     },
@@ -51,15 +50,17 @@ module.exports = {
     components(self) {
         return {
           async css(req, data) {
-            let dataObj = { erfThemesCssUrl : self.options.cssFile }
-            if(self.options.setDefaults) dataObj.cssThemesDefaultsUrl = path.resolve('/', self.options.cssDirectory, self.options.cssDefaultsName+'.css')
-            return dataObj
+            return { cssData : self.cssData }
           },
-          async js(req, data) {},
+          async js(req, data) {
+            return {
+                themes: self.shorthandThemes
+            }
+          },
           async themeSwitches(req, data){
             return {
-                themes: await self.getCurrentThemes(req, data.themeType),
-                includeTitle: data.includeTitle || true,
+                themes: data.types ? self.shorthandThemes.filter( obj => data.types.indexOf(obj.type) > -1) : self.shorthandThemes,
+                includeTitle: (data.includeTitle !== undefined ? data.includeTitle : true),
                 // TODO: make more widget types!
                 widget: data.widgetType || 'tabs'
             }
@@ -67,20 +68,32 @@ module.exports = {
         }
     },
     beforeSuperClass(self) {
-        let dir = path.resolve(process.cwd(), 'public', self.options.cssDirectory)
-        // Make directory if it doesn't exist
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-        self.options.cssFile = path.resolve('/', self.options.cssDirectory, self.options.cssFileName+'.css')
-        self.options.writeDirectory = dir
-        self.options.moduleTypes = Object.keys(self.options.themes)
-    },
-    init(self){
-        if(self.options.setDefaults) self.setDefaultTheme()
+        // Set default options
+        if(self.options.writeCssFile){
+            let dir = path.resolve(process.cwd(), 'public', self.options.cssDirectory)
+            // Make directory if it doesn't exist
+            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
-        self.apos.template.append('body', 'erf-apostrophe-themes:js');
+            self.options.cssFile = path.resolve('/', self.options.cssDirectory, self.options.cssFileName+'.css')
+            self.options.writeDirectory = dir
+        }
+
+        // Set activeThemes in case app is resetting
+        self.options.moduleTypes = Object.keys(self.options.themes)
+        self.activeThemes = [];
+        self.shorthandThemes = [];
+        self.cssData = ''
+
+    },
+    async init(self){
+        // self.apos.template.append('body', 'erf-apostrophe-themes:js');
         // TODO: remove after test
         self.apos.template.append('body', 'erf-apostrophe-themes:themeSwitches');
         self.apos.template.prepend('head', 'erf-apostrophe-themes:css');
+
+        self.activeThemes = await self.getCurrentThemes()
+        self.shorthandThemes = self.getShorthandThemes(self.activeThemes)
+        self.cssData = self.writeDataAsCss(self.activeThemes)
     },
     handlers(self){
         return {
@@ -89,7 +102,7 @@ module.exports = {
                   // Add themes as a data attribute on the body tag
                   // TODO: what? The admin bar uses this to stay open if configured by the user
                   try {
-                    let themes = await self.getCurrentThemes(req, 'all')
+                    let themes = self.activeThemes;
 
                     for(let i = 0; i < themes.length; i++){
                         let theme = themes[i]
@@ -136,11 +149,16 @@ module.exports = {
                 async writeThemesToFile(req, doc){
                     // If a live theme was changed
                     if(doc.aposMode === 'published' && doc.activated === true){
-                        let active = await self.find(req, {}).criteria({ activated: true }).toArray()
+                        let activeThemes = await self.find(req, {}).criteria({ activated: true }).toArray()
                             
                         // Write Css file
-                        let data = self.writeDataAsCss(active)
-                        self.writeCssFile(data, self.options.cssFileName)
+                        let data = self.writeDataAsCss(activeThemes)
+                        if(self.options.writeCssFile) self.writeCssFile(data, self.options.cssFileName)
+
+                        // Update our constant
+                        self.activeThemes = activeThemes
+                        self.shorthandThemes = self.getShorthandThemes(activeThemes)
+                        self.cssData = data
                     }
                 }
             }
@@ -185,16 +203,20 @@ module.exports = {
                     }
                 );
             },
-            async getCurrentThemes(req, themeType = 'all'){
-                let query = self.find(req, {})
-                let criteria = { aposMode: 'published', activated: true }
-                if(themeType == 'all'){
-                    return await query.criteria(criteria).toArray()
-                }else{
-                    // TODO: check if this works
-                    criteria.themeType = themeType
-                    return await query.criteria(criteria).toArray()
+            async getCurrentThemes(){
+                let criteria = {
+                    aposMode: 'published',
+                    activated: true,
+                    type: 'erf-apostrophe-themes',
+                    aposLocale: {
+                        // Only interested in valid draft locales
+                        $in: Object.keys(self.apos.i18n.locales).map(locale => `${locale}:published`)
+                    }
                 }
+                return await self.apos.doc.db.find(criteria).toArray()
+            },
+            getShorthandThemes(themes){
+                return themes.map( theme => ({ categories : Object.keys(theme.themeObject), type: theme.themeType, title: theme.title }))
             },
             writeColors(value, type, amount){
                 return Color(value)[type](amount).hex()
@@ -202,6 +224,7 @@ module.exports = {
             },
             writeDataAsCss(themeArray){
                 let data = '';
+                let defaultData = '';
                 for(let i = 0; i < themeArray.length; i++){
                     let theme = themeArray[i]
                     // light, dark, whatever names assigned
@@ -212,91 +235,80 @@ module.exports = {
                         let safeType = theme.themeType.toLowerCase().replaceAll(' ', '')
                         // colors, sizes, etc
                         let themeVariables = Object.keys(theme.themeObject[category])
-                        if(category === 'default'){
-                            data += `
-                            :root {
-                        `
-                        }else{
+                        if(category !== 'default'){
                             data += `
                             .themes-${safeType}-${category}, body[data-theme-${safeType}="${category}"] {
-                        `
+                            `
                         }
             
                         for(let k = 0; k < themeVariables.length; k++){
                             let varName = themeVariables[k] 
                             let variable = theme.themeObject[category][varName]
-                            let value = variable.value && variable.value.data ? variable.value.data : (variable.def || '')
+                            let schema = self.schemas[theme.themeType].find( s => s.name === varName)
+                            let value = variable.value && variable.value.data ? variable.value.data : (variable.def ? variable.def : '')
                             let templateVal = value;
+                            let newItem = ''
                             // TODO: test
-                            if(variable.templateFunc){
-                                if(self.options.templates[variable.templateFunc]){
-                                    data += self.options.templates[variable.templateFunc](templateVal, variable.variable)
-                                    continue;
+                            if(value){
+                                if(schema.templateFunc){
+                                    if(self.options.templates[schema.templateFunc]){
+                                        newItem += self.options.templates[schema.templateFunc](templateVal, schema.variable)
+                                    }
                                 }
-                            }
-                            else if(variable.template){
-                                if(Array.isArray(value)){
-                                    for(let l = 1; l < value.length; l++){
-                                        let field = value[l]
-                                        let val = field.value.data ? field.value.data : (field.def || '')
-                                        templateVal = variable.template.replace(`$VAR${l+1}`, val)
-                                    }
-                                }else if(variable.type === 'color' && (variable.lighten || variable.darken)){
-                                    const colorLoop = (type) => {
-                                        let amount = variable[`${type}Step`] || variable.step || (.9 / variable[type])
-                                        for(let l = 0; l < variable[type]; l++){
-                                            let colorVal = self.writeColors(templateVal, type, amount*(l+1))
-                                            data += `
-                                                --${variable.variable}${variable[`${type}Postfix`] ? '-'+variable[`${type}Postfix`]  : ''}-${l+1}: ${colorVal};
-                                            `
+                                else if(schema.template){
+                                    if(Array.isArray(value) && schema.join){
+                                        let conjoined = value.join(schema.join)
+                                        templateVal = schema.template.replace(`$VAR`, conjoined)
+                                    }else if(schema.type === 'color' && (schema.lighten || schema.darken)){
+                                        const colorLoop = (type) => {
+                                            let amount = schema[`${type}Step`] || schema.step || (.9 / schema[type])
+                                            for(let l = 0; l < schema[type]; l++){
+                                                let colorVal = self.writeColors(templateVal, type, amount*(l+1))
+                                                newItem += `
+                                                    --${schema.variable}${schema[`${type}Postfix`] ? '-'+schema[`${type}Postfix`]  : ''}-${l+1}: ${colorVal};
+                                                `
+                                            }
                                         }
+                                        if(schema.lighten) colorLoop('lighten')
+                                        if(schema.darken) colorLoop('darken')
+                                        // We are going to write the base val after these for loops
+                                        templateVal = schema.template.replace('$VAR', templateVal)
+                                    }else{
+                                        templateVal = schema.template.replace('$VAR', templateVal)
                                     }
-                                    if(variable.lighten){
-                                        colorLoop('lighten')
-                                    }
-                                    if(variable.darken){
-                                        colorLoop('darken')
-                                    }
-                                    // We are going to write the base val after these for loops
-                                    templateVal = variable.template.replace('$VAR', templateVal)
-                                }else{
-                                    templateVal = variable.template.replace('$VAR', templateVal)
+
+                                    newItem += `--${schema.variable}: ${templateVal};`
                                 }
 
-                                data += `--${variable.variable}: ${templateVal};`
+                                if(newItem.length > 0){
+                                    if(category === 'default'){
+                                        defaultData += newItem
+                                    }else{
+                                        data += newItem
+                                    }
+                                }
                             }
-            
                         }
                         data +=`
                             }
                         `
                     }
                 }
-                return data;
-            },
-            setDefaultTheme(){
-                let themeArr = []
-                for(let i = 0; i < self.options.moduleTypes.length; i++){
-                    let themeType = self.options.moduleTypes[i]
-                    themeArr.push({
-                        themeType: themeType,
-                        themeObject: {
-                            default: self.options.themes[themeType].fields.add
-                        }
-                    })
+
+                if(defaultData.length > 0){
+                    defaultData = `
+                    :root {
+                        ${defaultData}
+                    }
+                    `
+                    data = defaultData + data
                 }
-                // Write Css file
-                let data = self.writeDataAsCss(themeArr)
-                self.writeCssFile(data, self.options.cssDefaultsName)
+
+                return data;
             },
             writeCssFile(data, cssFileName){
                 fs.writeFile(`${self.options.writeDirectory}/${cssFileName}.css`, data, (err) => {
-                    if (err)
-                        // TODO, handle this... apos.warn?
-                      console.log(err);
-                    else {
-                      console.log("File written successfully\n");
-                    }
+                    if (err)  console.log(err);
                 });
             }
         }

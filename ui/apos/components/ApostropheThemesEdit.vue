@@ -137,6 +137,7 @@ export default {
         let styleTag = document.createElement('style')
         let bodyTag = document.querySelector('body')
         let bodyData = {...bodyTag.dataSet}
+        let bodyClasses = body.className
 
         return {
             // We destructure here to avoid Vue mutating the props object
@@ -156,24 +157,20 @@ export default {
             pending: null,
             styleTag: styleTag,
             bodyTag: bodyTag,
-            bodyData: bodyData
+            bodyData: bodyData,
+            bodyClasses: bodyClasses
         }
     },
     mounted(){
         console.log('form',this.$props, this.$data)
         // Get active styles link tag, or the title tag if one doesn't exist yet.
-        let activeStyles = document.querySelector('link#erf-themes-css') || document.querySelector('title')
+        let activeStyles = document.querySelector('style#erf-themes-css') || document.querySelector('title')
         activeStyles.parentNode.insertBefore(this.$data.styleTag, activeStyles.nextSibling);
     },
     beforeDestroy(){
         // Remove the styleTag
+        this.resetBody()
         this.styleTag.parentNode.removeChild(this.styleTag)
-        // Reset the dataset values of the body tag
-        for(let set in this.bodyTag.dataset){
-            this.bodyData[set] ?
-                this.bodyTag.dataset[set] = this.bodyData[set] :
-                delete this.bodyTag.dataset[set]
-        }
     },
     methods: {
         editCategory(category = ''){
@@ -182,7 +179,6 @@ export default {
             this.categoryClickedOriginalName = category;
             this.editObject = { ...(this.categories[category] ? this.categories[category] : this.$props.themeObject.fields.add)}
 
-            window.updateBodyTheme(this.currentCategory, this.$props.themeType)
             this.updatePreviewStyles()
 
             this.categoryIsEditing = true;
@@ -219,10 +215,13 @@ export default {
             this.categories[this.currentCategory] = this.editObject;
             this.currentCategory = '';
             this.categoryClickedOriginalName = '';
+            this.resetBody()
         },
         cancelCategory(){
             this.categoryIsEditing = false;
             this.currentCategory = '';
+            this.styleTag.innerHTML = '';
+            this.resetBody()
         },
         saveTheme(emitType){
             this.$emit(emitType, this.$props.themeType, this.$data.categories, this.$data.titleName.data, this.$data.activated.data)
@@ -233,12 +232,14 @@ export default {
         updateFields(category, fields){
             this.currentCategory = category;
             this.editObject = fields;
-            console.log(fields)
-            // TODO: uncommented
             // We are reseting the pending timeout since most likely a user is still editing the field
+            if (this.pending) {
+                clearTimeout(this.pending);
+                this.pending = null;
+            }
             this.pending = setTimeout(() => {
                 this.continueFieldsUpdate();
-            }, 1000);
+            }, 300);
         },
         continueFieldsUpdate(){
             if (this.pending) {
@@ -247,11 +248,21 @@ export default {
             }
             this.updatePreviewStyles()
         },
+        resetBody() {
+            // Reset the dataset values of the body tag
+            this.bodyTag.className = this.bodyClasses;
+            for(let set in this.bodyTag.dataset){
+                this.bodyData[set] ?
+                    this.bodyTag.dataset[set] = this.bodyData[set] :
+                    delete this.bodyTag.dataset[set]
+            }
+        },
         async updatePreviewStyles(){
+            let themeName = this.currentCategory ? this.currentCategory : 'empty'
             let themeArr = [{
                 themeType: this.$props.themeType,
                 themeObject: {
-                    [this.currentCategory || 'empty'] : { ...this.editObject }
+                    [themeName] : { ...this.editObject }
                 }
             }]
 
@@ -261,6 +272,7 @@ export default {
                     body: { theme: themeArr }
                 })
                 this.styleTag.innerHTML = cssData;
+                window.updateBodyTheme(themeName, this.$props.themeType)
             }catch(e){
                 window.apos.notify('Could not compose css for the preview. Please contact IT.', {
                     type: 'error',

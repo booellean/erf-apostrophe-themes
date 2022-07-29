@@ -304,16 +304,8 @@ export default {
                 doc = publishedItem
             }
 
-            // Transform the data to match our aggregate pattern
-            doc = this.transformDoc(doc)
-            
-            if(!this.currentTheme._id){
-                this.items.splice(0,0,doc)
-            }else if(this.currentIndex > -1){
-                this.items.splice(this.currentIndex, 1, doc)
-            }
-
-            if(!draft) this.resetCss()
+            if(!draft && themeActivated) window.updateBodyTheme(Object.keys(themeObject)[0], themeType)
+            this.getThemes()
 
             // Reset Values
             this.cancelTheme()
@@ -369,18 +361,18 @@ export default {
             this.currentIndex = null
             this.isEditing = false
         },
-        resetCss(){
-            let oldTag = document.querySelector('link#erf-themes-css')
-            if(oldTag){
-                let url = oldTag.getAttribute('href');
-                let newTag = document.createElement('link')
-                newTag.setAttribute('href', url)
-                newTag.setAttribute('rel', 'stylesheet')
-                newTag.setAttribute('id', 'erf-themes-css')
-                let head = oldTag.parentNode
-                head.replaceChild(newTag, oldTag)
-            }
-        },
+        // resetCss(){
+        //     let oldTag = document.querySelector('style#erf-themes-css')
+        //     if(oldTag){
+        //         let url = oldTag.getAttribute('href');
+        //         let newTag = document.createElement('link')
+        //         newTag.setAttribute('href', url)
+        //         newTag.setAttribute('rel', 'stylesheet')
+        //         newTag.setAttribute('id', 'erf-themes-css')
+        //         let head = oldTag.parentNode
+        //         head.replaceChild(newTag, oldTag)
+        //     }
+        // },
         transformDoc(doc){
             return { _id : doc._id, doc: doc }
         }

@@ -13,7 +13,7 @@
                     <component
                         v-model="themeValues[field].value"
                         :is="fieldComponentMap[currentTheme[field].type]"
-                        :field="schema.find( s => s.name === field) || {}"
+                        :field="(schema.find( s => s.name === field) || {})"
                         :value="currentTheme[field].value || { data: (currentTheme[field].def || '') }"
                     />
                 </div>
@@ -28,7 +28,7 @@
 <script>
 import AposInputString from 'apostrophe/modules/@apostrophecms/schema/ui/apos/components/AposInputString'
 import Accordian from './pieces/Accordian'
-
+//:field="{...themeValues[field], ...(schema.find( s => s.name === field) || {})}"
 export default {
     emits: ['input-change'],
     components: { Accordian, AposInputString },
