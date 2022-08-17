@@ -272,7 +272,7 @@ export default {
                     body: { theme: themeArr }
                 })
                 this.styleTag.innerHTML = cssData;
-                window.updateBodyTheme(themeName, this.$props.themeType)
+                window.apos.util.widgetPlayers['erf-apostrophe-themes'].updateBodyTheme(themeName, this.$props.themeType)
             }catch(e){
                 window.apos.notify('Could not compose css for the preview. Please contact IT.', {
                     type: 'error',

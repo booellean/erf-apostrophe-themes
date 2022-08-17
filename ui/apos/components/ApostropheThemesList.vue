@@ -90,14 +90,13 @@
 </template>
 
 <script>
-import AposButton from 'apostrophe/modules/@apostrophecms/ui/ui/apos/components/AposButton'
 import AposContextMenu from 'apostrophe/modules/@apostrophecms/ui/ui/apos/components/AposContextMenu'
 import AposLabel from 'apostrophe/modules/@apostrophecms/ui/ui/apos/components/AposLabel'
 
 export default {
     name: 'ApostropheThemesList',
     emits: ['copy-item', 'delete-item', 'discard-draft', 'edit-item'],
-    components: { AposButton, AposContextMenu, AposLabel },
+    components: { AposContextMenu, AposLabel },
     props: {
         items: {
             type: Array,

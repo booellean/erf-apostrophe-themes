@@ -5,6 +5,7 @@
           key: 'Manage Themes',
           type: 'themes'
         }"
+        class="erf-themes-modal"
         @inactive="modal.active = false"
         @show-modal="modal.showModal = true"
         @esc="modal.showModal = false"
@@ -304,7 +305,7 @@ export default {
                 doc = publishedItem
             }
 
-            if(!draft && themeActivated) window.updateBodyTheme(Object.keys(themeObject)[0], themeType)
+            if(!draft && themeActivated) window.apos.util.widgetPlayers['erf-apostrophe-themes'].updateBodyTheme(Object.keys(themeObject)[0], themeType)
             this.getThemes()
 
             // Reset Values
@@ -385,6 +386,9 @@ export default {
         overflow: auto;
         height: auto;
         z-index: 2000;
+    }
+    .erf-themes-modal .apos-modal__overlay {
+        background-color: transparent;
     }
     .apos-button--success {
         border: 1px solid var(--a-success) !important;

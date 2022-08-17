@@ -3,7 +3,6 @@ const path = require('path');
 const sanitize = require('mongo-sanitize');
 const Color = require('color')
 
-// TODO: This will control the ui for the admin bar too....
 module.exports = {
     extend: '@apostrophecms/piece-type',
     options: {
@@ -49,15 +48,15 @@ module.exports = {
     },
     components(self) {
         return {
-          async css(req, data) {
+          css(req, data) {
             return { cssData : self.cssData }
           },
-          async js(req, data) {
+          js(req, data) {
             return {
                 themes: self.shorthandThemes
             }
           },
-          async themeSwitches(req, data){
+          themeSwitches(req, data){
             return {
                 themes: data.types ? self.shorthandThemes.filter( obj => data.types.indexOf(obj.type) > -1) : self.shorthandThemes,
                 includeTitle: (data.includeTitle !== undefined ? data.includeTitle : true),
@@ -86,41 +85,35 @@ module.exports = {
 
     },
     async init(self){
-        // self.apos.template.append('body', 'erf-apostrophe-themes:js');
+        self.apos.template.append('body', 'erf-apostrophe-themes:js');
         // TODO: remove after test
         self.apos.template.append('body', 'erf-apostrophe-themes:themeSwitches');
         self.apos.template.prepend('head', 'erf-apostrophe-themes:css');
 
+        await self.addSettingsCollection();
         self.activeThemes = await self.getCurrentThemes()
         self.shorthandThemes = self.getShorthandThemes(self.activeThemes)
         self.cssData = self.writeDataAsCss(self.activeThemes)
     },
     handlers(self){
         return {
+            // TODO: make this a global???
             '@apostrophecms/page:beforeSend': {
                 async addDataAndAttributeToBody(req) {
+                  let themeStore = req.cookies[`${self.apos.shortName}.erf-themes`]
+                  let themes = themeStore ? JSON.parse(themeStore) : null
                   // Add themes as a data attribute on the body tag
                   // TODO: what? The admin bar uses this to stay open if configured by the user
-                  try {
-                    let themes = self.activeThemes;
 
-                    for(let i = 0; i < themes.length; i++){
-                        let theme = themes[i]
-                        let type = theme.themeType.toLowerCase().replaceAll(' ', '')
-                        let category;
-                        let dataObj = {};
-                        // fastest way to get first value
-                        for(let cat in theme.themeObject){
-                            category = cat;
-                            break;
-                        }
+                  if(themes){
+                    for(let type in themes){
+                        let category = themes[type]
+                        let dataObj = {}
                         dataObj[`theme-${type}`] = category
 
                         self.apos.template.addBodyClass(req, `themes-${type}-${category}`)
                         self.apos.template.addBodyDataAttribute(req, dataObj)
-                    }
-                  }catch(e){
-                    self.apos.util.warn(`Please contact IT. ${e.message}`);
+                    } 
                   }
                 }
             },
@@ -202,6 +195,10 @@ module.exports = {
                         moduleGetCss: '/api/v1/erf-apostrophe-themes-get-css'
                     }
                 );
+            },
+            async addSettingsCollection(){
+                await self.apos.db.collection(collectionName);
+                await self.apos.db.collection(collectionName).createIndex({ moduleType: 'text' }, { unique: true });
             },
             async getCurrentThemes(){
                 let criteria = {
@@ -289,9 +286,13 @@ module.exports = {
                                 }
                             }
                         }
-                        data +=`
-                            }
-                        `
+
+                        if(category !== 'default'){
+                            data +=`
+                                }
+                            `
+                        }
+
                     }
                 }
 
@@ -358,3 +359,5 @@ module.exports = {
         }
     }
 }
+
+const collectionName = 'aposErfSettings';
